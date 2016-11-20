@@ -1,0 +1,38 @@
+{
+  "name": "provider-site-metalsmith",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node ./build.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "copy-dir": "^0.3.0",
+    "glob-watcher": "^3.0.0",
+    "handlebars": "^4.0.5",
+    "hrtime-measure": "^1.0.12",
+    "lodash": "^4.13.1",
+    "metalsmith": "^2.1.0",
+    "metalsmith-changed": "^2.0.0",
+    "metalsmith-collections": "^0.7.0",
+    "metalsmith-html-minifier": "^2.2.0",
+    "metalsmith-if": "^0.1.1",
+    "metalsmith-in-place": "^1.4.4",
+    "metalsmith-include": "0.0.2",
+    "metalsmith-json-to-files": "^1.0.0",
+    "metalsmith-layouts": "^1.6.5",
+    "metalsmith-livereload": "0.0.2",
+    "metalsmith-markdown": "^0.2.1",
+    "metalsmith-metadata": "0.0.4",
+    "metalsmith-permalinks": "^0.5.0",
+    "metalsmith-renamer": "^0.2.2",
+    "metalsmith-static": "0.0.5",
+    "node-static": "^0.7.7",
+    "open": "0.0.5",
+    "pug": "^2.0.0-beta3",
+    "rimraf": "^2.5.4"
+  }
+}
