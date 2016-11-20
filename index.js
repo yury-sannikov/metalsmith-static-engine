@@ -22,6 +22,8 @@ const evalLayout = require('./metalsmith-eval-layout');
 const metainfo = require('./metalsmith-metainfo');
 const templateAssets = require('./metalsmith-template-assets');
 const htmlMinifier = require('metalsmith-html-minifier');
+const jsonContent = require('./metalsmith-json-external-content');
+
 
 const path = require('path');
 const rimraf = require('rimraf')
@@ -50,6 +52,17 @@ function pluginWrapper(plugin, opts) {
   }
 }
 
+function timeLogger(name){
+  return function(files, metalsmith, done) {
+    var start = new Date().getTime();
+    var started = new Date().toISOString().slice(14, -1);
+    done();
+    var end = new Date().getTime();
+    console.log(`    => ${name} : ${started} - ${end - start}ms`);
+  }
+}
+
+
 function metalsmithFactory(workDir, buildDir, options) {
 
   const sourceDir = path.join(workDir, options.source)
@@ -63,12 +76,14 @@ function metalsmithFactory(workDir, buildDir, options) {
     // Do full clean if layout or partial has been changed
     .clean(options._clean)
     // Inject metadata from JSON files into context.
+    .use(timeLogger('injet metadata'))
     .use(metadata({
       practice: 'data/practice.json',
       menu: 'data/menu.json',
       contents: 'data/contents.json',
       reviews: 'data/reviews.json'
     }))
+    .use(timeLogger('copy template assets'))
     .use(
       // If clean build, copy over assets from public folder
       msIf(options._generate,
@@ -79,6 +94,7 @@ function metalsmithFactory(workDir, buildDir, options) {
         }])
       )
     )
+    .use(timeLogger('copy site assets'))
     .use(
       // If clean build, copy over assets from public folder
       msIf(options._generate,
@@ -89,6 +105,7 @@ function metalsmithFactory(workDir, buildDir, options) {
         }])
       )
     )
+    .use(timeLogger('copy widgets'))
     .use(
       msIf(options._generate,
         templateAssets([
@@ -98,13 +115,14 @@ function metalsmithFactory(workDir, buildDir, options) {
         }])
       )
     )
-
+    .use(timeLogger('check dependencies'))
     // Dependency tracking for metalsmith-include. Set ctime for all dependent files to the latest value of the group
     .use(dep())
     // Track file changes in 'src' folder. Pass down only changed file to reduce build time
     // Temporarely disabled as has a conflict with metalsmith-include plugin
     // Can be improved by checking metalsmith-include dependencies and update ctime
     .use(msIf(!options._force, changed()))
+    .use(timeLogger('process markdown markup'))
     // Markdown Syntax
     .use(msIf(options._generate,
       markdown({
@@ -114,17 +132,26 @@ function metalsmithFactory(workDir, buildDir, options) {
       }))
     )
     // Allow to include markdown files into JADE
+    .use(timeLogger('process markdown includes'))
     .use(include({
       deletePartials: true
     }))
+    .use(timeLogger('load JSON data as HTML files'))
     .use(jsonToFiles({
       source_path: path.join(workDir, options.dataFolder, '/')
     }))
+    .use(timeLogger('load JSON external content'))
+    .use(jsonContent({
+      contentPath: path.join(workDir, options.dataFolder, '/'),
+      htmlContentField: 'htmlContent'
+    }))
+    .use(timeLogger('use collections'))
     .use(collections({
       providers: {},
       services: {},
       contents: {}
     }))
+    .use(timeLogger('generate permalinks'))
     .use(permalinks({
       relative: false,
       date: 'YYYY',
@@ -135,7 +162,9 @@ function metalsmithFactory(workDir, buildDir, options) {
       }]
     }))
     // If eval_layout is true, treat layout as a field containing computable value
+    .use(timeLogger('evaluate variable layouts'))
     .use(evalLayout())
+    .use(timeLogger('generate metainformation'))
     .use(msIf(options._force,
       metainfo({
         metainfoPath: path.join(workDir, options.metainfo),
@@ -144,16 +173,18 @@ function metalsmithFactory(workDir, buildDir, options) {
       })))
 
     // PUG/Jade layouts system
+    .use(timeLogger('generate HTML using PUG layouts'))
     .use(msIf(options._generate,
       layouts({
         engine: 'pug',
         layoutPattern: '*.pug',
-        pretty: true,
+        pretty: !options._minify,
         directory: path.join(themeDir, 'layouts'),
         helpers: helpersFactory(),
         deployOptions: options._deploy
       }))
     )
+    .use(timeLogger('generate HTML using Handlebars template'))
     .use(msIf(options._generate,
       pluginWrapper(inplace, {
         engine: 'handlebars',
@@ -161,6 +192,7 @@ function metalsmithFactory(workDir, buildDir, options) {
         overrideMetalsmithPath: options.partialsPath
       }))
     )
+    .use(timeLogger('minify files'))
     .use(msIf(options._minify === true, htmlMinifier()))
 }
 
@@ -228,6 +260,7 @@ class SiteBuilderEngine {
     }))
     ms.build((err, files) => {
       if (err) {
+        console.log(err);
         done(err, files)
         return
       }
@@ -275,7 +308,7 @@ class SiteBuilderEngine {
         }
         const themeDir = path.normalize(this.options.themeDir)
         // Quick build if src changed
-        watch(path.join(this.workDir, '(assets|src)/**/*'), { ignoreInitial: true }, build());
+        watch(path.join(this.workDir, '**/*'), { ignoreInitial: true }, build());
         watch(path.join(themeDir, 'layouts/**/*'), { ignoreInitial: true }, build());
         watch(path.join(themeDir, 'partials/**/*'), { ignoreInitial: true }, build());
         watch(path.join(themeDir, 'assets/**/*'), { ignoreInitial: true }, build());
