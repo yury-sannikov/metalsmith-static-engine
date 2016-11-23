@@ -176,8 +176,8 @@ function metalsmithFactory(workDir, buildDir, options) {
     .use(timeLogger('generate HTML using PUG layouts'))
     .use(msIf(options._generate,
       layouts({
-        engine: 'pug',
-        layoutPattern: '*.pug',
+        engine: 'handlebars',
+        layoutPattern: '*.html',
         pretty: !options._minify,
         directory: path.join(themeDir, 'layouts'),
         helpers: helpersFactory(),
