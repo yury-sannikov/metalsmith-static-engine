@@ -172,6 +172,14 @@ function metalsmithFactory(workDir, buildDir, options) {
         outputFile: path.join(buildDir, 'metainfo.json')
       })))
 
+    .use(timeLogger('generate HTML using Handlebars template'))
+    .use(msIf(options._generate,
+      pluginWrapper(inplace, {
+        engine: 'handlebars',
+        partials: options.partials,
+        overrideMetalsmithPath: options.partialsPath
+      }))
+    )
     // PUG/Jade layouts system
     .use(timeLogger('generate HTML using PUG layouts'))
     .use(msIf(options._generate,
@@ -182,14 +190,6 @@ function metalsmithFactory(workDir, buildDir, options) {
         directory: path.join(themeDir, 'layouts'),
         helpers: helpersFactory(),
         deployOptions: options._deploy
-      }))
-    )
-    .use(timeLogger('generate HTML using Handlebars template'))
-    .use(msIf(options._generate,
-      pluginWrapper(inplace, {
-        engine: 'handlebars',
-        partials: options.partials,
-        overrideMetalsmithPath: options.partialsPath
       }))
     )
     .use(timeLogger('minify files'))
