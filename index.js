@@ -323,6 +323,15 @@ class SiteBuilderEngine {
         const build = function build() {
           return (done) => {
             console.log(`Rebuild.`)
+
+            var metadata = ms.metadata();
+            if (metadata.collections){
+              Object.keys(metadata.collections).forEach(function(collection){
+                delete metadata[collection];
+              });
+              delete metadata.collections;
+            }          
+
             ms.build((err, files) => {
               console.log('Rebuild done.')
               buildResult(err, files)
