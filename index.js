@@ -23,11 +23,15 @@ const metainfo = require('./metalsmith-metainfo');
 const templateAssets = require('./metalsmith-template-assets');
 const htmlMinifier = require('metalsmith-html-minifier');
 const jsonContent = require('./metalsmith-json-external-content');
+const metalsmithRegisterHelpers = require('metalsmith-register-helpers');
+
+require('handlebars-helpers')();
 
 
 const path = require('path');
 const rimraf = require('rimraf')
 const _ = require('lodash');
+const fs = require('fs');
 
 function helpersFactory() {
   return {
@@ -64,9 +68,25 @@ function timeLogger(name){
 
 
 function metalsmithFactory(workDir, buildDir, options) {
-
   const sourceDir = path.join(workDir, options.source)
   const themeDir = path.normalize(options.themeDir)
+
+  let handlebarHelpersPath = path.join(themeDir, 'helpers');
+  try {
+      if (!fs.lstatSync(handlebarHelpersPath).isDirectory()) {
+        handlebarHelpersPath = null;
+      }
+  }
+  catch (e) {
+    handlebarHelpersPath = null;
+  }
+
+  if (!handlebarHelpersPath) {
+    console.log('No Handlebars Extensions available');
+  } else {
+    console.log('Using Handlebars Extensions at ' + handlebarHelpersPath);
+  }
+
   return Metalsmith(workDir)
     // Folder with source data
     .source(sourceDir)
@@ -171,7 +191,11 @@ function metalsmithFactory(workDir, buildDir, options) {
         includeForMetaOnly: ['menu', 'practice'],
         outputFile: path.join(buildDir, 'metainfo.json')
       })))
-
+    .use(msIf(handlebarHelpersPath, 
+      metalsmithRegisterHelpers({
+        directory: handlebarHelpersPath
+      })
+    ))
     .use(timeLogger('generate HTML using Handlebars template'))
     .use(msIf(options._generate,
       pluginWrapper(inplace, {
