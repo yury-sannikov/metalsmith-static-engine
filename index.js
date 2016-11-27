@@ -1,10 +1,7 @@
 'use strict';
+
 const Metalsmith = require('metalsmith');
 const changed = require('metalsmith-changed');
-const livereload = require('metalsmith-livereload');
-const nodeStatic = require('node-static');
-const watch = require('glob-watcher');
-const open = require('open');
 const include = require('metalsmith-include');
 const layouts = require('metalsmith-layouts');
 const measure = require('hrtime-measure');
@@ -66,6 +63,37 @@ function timeLogger(name){
   }
 }
 
+// Layout factories is needed to provide possibility of choosing between
+// pug and handlebars template engine
+
+const hbsLayoutFactory = (options) => layouts({
+    engine: 'handlebars',
+    layoutPattern: '*.html',
+    pretty: !options._minify,
+    directory: path.join(options.themeDir, 'layouts'),
+    helpers: helpersFactory(),
+    deployOptions: options._deploy
+})
+
+
+const pugLayoutFactory = (options) => layouts({
+    engine: 'pug',
+    layoutPattern: '*.pug',
+    pretty: !options._minify,
+    directory: path.join(options.themeDir, 'layouts'),
+    helpers: helpersFactory(),
+    deployOptions: options._deploy
+})
+
+const LAYOUT_FACTORIES = {
+    hbs: hbsLayoutFactory,
+    pug: pugLayoutFactory,
+    default: (options) => {
+        throw new Error(`Unknown engine ${options.templateEngine}`)
+    }
+}
+
+const layoutsFactory = (options) => LAYOUT_FACTORIES[options.templateEngine] ? LAYOUT_FACTORIES[options.templateEngine](options) : LAYOUT_FACTORIES.default(options)
 
 function metalsmithFactory(workDir, buildDir, options) {
   const sourceDir = path.join(workDir, options.source)
@@ -191,12 +219,12 @@ function metalsmithFactory(workDir, buildDir, options) {
         includeForMetaOnly: ['menu', 'practice'],
         outputFile: path.join(buildDir, 'metainfo.json')
       })))
-    .use(msIf(handlebarHelpersPath, 
+    .use(timeLogger(`generate HTML using ${options.templateEngine.toUpperCase()} template engine`))
+    .use(msIf(handlebarHelpersPath,
       metalsmithRegisterHelpers({
         directory: handlebarHelpersPath
       })
     ))
-    .use(timeLogger('generate HTML using Handlebars template'))
     .use(msIf(options._generate,
       pluginWrapper(inplace, {
         engine: 'handlebars',
@@ -204,18 +232,9 @@ function metalsmithFactory(workDir, buildDir, options) {
         overrideMetalsmithPath: options.partialsPath
       }))
     )
-    // PUG/Jade layouts system
-    .use(timeLogger('generate HTML using PUG layouts'))
     .use(msIf(options._generate,
-      layouts({
-        engine: 'handlebars',
-        layoutPattern: '*.html',
-        pretty: !options._minify,
-        directory: path.join(themeDir, 'layouts'),
-        helpers: helpersFactory(),
-        deployOptions: options._deploy
-      }))
-    )
+        layoutsFactory(options)
+    ))
     .use(timeLogger('minify files'))
     .use(msIf(options._minify === true, htmlMinifier()))
 }
@@ -273,6 +292,10 @@ class SiteBuilderEngine {
     ms.build(done)
   }
 
+  getFactory(options){
+    return metalsmithFactory(this.workDir, this.buildDir, Object.assign({}, this.options, options))
+  }
+
   publish(deployOptions, done) {
     this.cleanRequireCache()
     const ms = metalsmithFactory(this.workDir, this.buildDir, Object.assign({}, this.options, {
@@ -293,62 +316,6 @@ class SiteBuilderEngine {
       })
     })
   }
-
-  cliDev(port, buildResult) {
-
-    const me = this
-    const ms = metalsmithFactory(this.workDir, this.buildDir, Object.assign({}, this.options, {
-      _clean: true,
-      _generate: true,
-      _force: true
-    }))
-
-    ms
-      .use(livereload({ debug: true }))
-      .build((err, files) => {
-        if (err) {
-          buildResult(err, files)
-          return
-        }
-        buildResult(err, files)
-
-        var serve = new nodeStatic.Server(this.buildDir);
-        require('http').createServer((req, res) => {
-          req.addListener('end', () => serve.serve(req, res));
-          req.resume();
-        }).listen(port);
-
-        console.log(`Serving HTTP on port ${port}`)
-
-        const build = function build() {
-          return (done) => {
-            console.log(`Rebuild.`)
-
-            var metadata = ms.metadata();
-            if (metadata.collections){
-              Object.keys(metadata.collections).forEach(function(collection){
-                delete metadata[collection];
-              });
-              delete metadata.collections;
-            }          
-
-            ms.build((err, files) => {
-              console.log('Rebuild done.')
-              buildResult(err, files)
-              done()
-            })
-          }
-        }
-        const themeDir = path.normalize(this.options.themeDir)
-        // Quick build if src changed
-        watch(path.join(this.workDir, '**/*'), { ignoreInitial: true }, build());
-        watch(path.join(themeDir, 'layouts/**/*'), { ignoreInitial: true }, build());
-        watch(path.join(themeDir, 'partials/**/*'), { ignoreInitial: true }, build());
-        watch(path.join(themeDir, 'assets/**/*'), { ignoreInitial: true }, build());
-        watch(path.join(themeDir, 'inplacePartials/**/*'), { ignoreInitial: true }, build());
-      })
-  }
-
 
 }
 
