@@ -219,7 +219,10 @@ function metalsmithFactory(workDir, buildDir, options) {
         includeForMetaOnly: ['menu', 'practice'],
         outputFile: path.join(buildDir, 'metainfo.json')
       })))
-    .use(timeLogger(`generate HTML using ${options.templateEngine.toUpperCase()} template engine`))
+    .use(timeLogger(`generate HTML using ${
+        options.templateEngine&&options.templateEngine.toUpperCase
+        ?options.templateEngine.toUpperCase() 
+        :'Unknown'} template engine`))
     .use(msIf(handlebarHelpersPath,
       metalsmithRegisterHelpers({
         directory: handlebarHelpersPath
