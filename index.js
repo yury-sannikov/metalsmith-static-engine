@@ -53,6 +53,11 @@ function pluginWrapper(plugin, opts) {
   }
 }
 
+function pluginsSequence(ms,pluginOne,pluginTwo,condition) {
+    const plugins = condition ? [pluginOne,pluginTwo] : [pluginTwo,pluginOne]
+    ms.plugins = ms.plugins.concat(plugins)
+}
+
 function timeLogger(name){
   return function(files, metalsmith, done) {
     var start = new Date().getTime();
@@ -93,6 +98,8 @@ const LAYOUT_FACTORIES = {
     }
 }
 
+const LAYOUT_FIRST = ['hbs'];
+
 const layoutsFactory = (options) => LAYOUT_FACTORIES[options.templateEngine] ? LAYOUT_FACTORIES[options.templateEngine](options) : LAYOUT_FACTORIES.default(options)
 
 function metalsmithFactory(workDir, buildDir, options) {
@@ -115,7 +122,7 @@ function metalsmithFactory(workDir, buildDir, options) {
     console.log('Using Handlebars Extensions at ' + handlebarHelpersPath);
   }
 
-  return Metalsmith(workDir)
+  var ms = Metalsmith(workDir)
     // Folder with source data
     .source(sourceDir)
     // Folder with results
@@ -225,24 +232,31 @@ function metalsmithFactory(workDir, buildDir, options) {
         :'Unknown'} template engine`))
     .use(msIf(handlebarHelpersPath,
       metalsmithRegisterHelpers({
-        directory: handlebarHelpersPath
+          directory: handlebarHelpersPath
       })
     ))
-    .use(msIf(options._generate,
-      pluginWrapper(inplace, {
-        engine: 'handlebars',
-        partials: options.partials,
-        overrideMetalsmithPath: options.partialsPath
-      }))
-    )
-    .use(msIf(options._generate,
-        layoutsFactory(options)
-    ))
-    .use(timeLogger('minify files'))
+
+    if(options._generate) {
+        pluginsSequence(
+            ms,
+            layoutsFactory(options),
+            pluginWrapper(inplace, {
+                engine: 'handlebars',
+                partials: options.partials,
+                overrideMetalsmithPath: options.partialsPath
+            }),
+            LAYOUT_FIRST.indexOf(options.templateEngine)==-1
+        )
+    }
+
+    ms.use(timeLogger('minify files'))
     .use(msIf(options._minify === true, htmlMinifier()))
+
+    return ms;
 }
 
 class SiteBuilderEngine {
+
   constructor(workDir, buildDir, options) {
     this.workDir = workDir
     this.buildDir = buildDir
@@ -321,6 +335,5 @@ class SiteBuilderEngine {
   }
 
 }
-
 
 module.exports = SiteBuilderEngine
