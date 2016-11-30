@@ -171,25 +171,24 @@ function metalsmithFactory(workDir, buildDir, options) {
         includeForMetaOnly: ['menu', 'practice'],
         outputFile: path.join(buildDir, 'metainfo.json')
       })))
-
+    // PUG/Jade layouts system
+    .use(timeLogger('generate HTML using PUG layouts'))
+    .use(msIf(options._generate,
+      layouts({
+        engine: 'pug',
+        layoutPattern: '*.pug',
+        pretty: !options._minify,
+        directory: path.join(themeDir, 'layouts'),
+        helpers: helpersFactory(),
+        deployOptions: options._deploy
+      }))
+    )
     .use(timeLogger('generate HTML using Handlebars template'))
     .use(msIf(options._generate,
       pluginWrapper(inplace, {
         engine: 'handlebars',
         partials: options.partials,
         overrideMetalsmithPath: options.partialsPath
-      }))
-    )
-    // PUG/Jade layouts system
-    .use(timeLogger('generate HTML using PUG layouts'))
-    .use(msIf(options._generate,
-      layouts({
-        engine: 'handlebars',
-        layoutPattern: '*.html',
-        pretty: !options._minify,
-        directory: path.join(themeDir, 'layouts'),
-        helpers: helpersFactory(),
-        deployOptions: options._deploy
       }))
     )
     .use(timeLogger('minify files'))
