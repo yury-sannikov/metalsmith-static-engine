@@ -250,6 +250,7 @@ function metalsmithFactory(workDir, buildDir, options) {
     }
 
     ms.use(timeLogger('minify files'))
+
     .use(msIf(options._minify === true, htmlMinifier()))
 
     return ms;
