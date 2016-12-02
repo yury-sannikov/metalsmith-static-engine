@@ -20,7 +20,7 @@ const metainfo = require('./metalsmith-metainfo');
 const templateAssets = require('./metalsmith-template-assets');
 const htmlMinifier = require('metalsmith-html-minifier');
 const jsonContent = require('./metalsmith-json-external-content');
-const metalsmithRegisterHelpers = require('metalsmith-register-helpers');
+const metalsmithRegisterHelpers = require('./metalsmith-register-helpers');
 
 require('handlebars-helpers')();
 
@@ -107,6 +107,7 @@ function metalsmithFactory(workDir, buildDir, options) {
   const themeDir = path.normalize(options.themeDir)
 
   let handlebarHelpersPath = path.join(themeDir, 'helpers');
+
   try {
       if (!fs.lstatSync(handlebarHelpersPath).isDirectory()) {
         handlebarHelpersPath = null;
@@ -121,6 +122,11 @@ function metalsmithFactory(workDir, buildDir, options) {
   } else {
     console.log('Using Handlebars Extensions at ' + handlebarHelpersPath);
   }
+
+  const GLOBAL_HELPERS_PATH = path.join(__dirname,'../content/sitebuilder-themes/global-helpers');
+
+  const HELPERS_PATHS = [GLOBAL_HELPERS_PATH];
+  if(handlebarHelpersPath) HELPERS_PATHS.push(handlebarHelpersPath);
 
   var ms = Metalsmith(workDir)
     // Folder with source data
@@ -230,11 +236,9 @@ function metalsmithFactory(workDir, buildDir, options) {
         options.templateEngine&&options.templateEngine.toUpperCase
         ?options.templateEngine.toUpperCase() 
         :'Unknown'} template engine`))
-    .use(msIf(handlebarHelpersPath,
-      metalsmithRegisterHelpers({
-          directory: handlebarHelpersPath
-      })
-    ))
+    .use(metalsmithRegisterHelpers({
+        directory: HELPERS_PATHS
+    }))
 
     if(options._generate) {
         pluginsSequence(
