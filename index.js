@@ -21,6 +21,8 @@ const templateAssets = require('./metalsmith-template-assets');
 const htmlMinifier = require('metalsmith-html-minifier');
 const jsonContent = require('./metalsmith-json-external-content');
 const metalsmithRegisterHelpers = require('./metalsmith-register-helpers');
+const metalsmithRegisterHelpers = require('metalsmith-register-helpers');
+const ignore = require('metalsmith-ignore');
 
 require('handlebars-helpers')();
 
@@ -136,6 +138,8 @@ function metalsmithFactory(workDir, buildDir, options) {
     // Clean result folder if 'clean' is true.
     // Do full clean if layout or partial has been changed
     .clean(options._clean)
+    // Do not take into account any external content HTML files
+    .use(ignore(['data/**/*.html']))
     // Inject metadata from JSON files into context.
     .use(timeLogger('injet metadata'))
     .use(metadata({
@@ -256,6 +260,8 @@ function metalsmithFactory(workDir, buildDir, options) {
     ms.use(timeLogger('minify files'))
 
     .use(msIf(options._minify === true, htmlMinifier()))
+    // Delete all processed leftovers from data folder not to come out to the output
+    .use(ignore(['data/*']))
 
     return ms;
 }
