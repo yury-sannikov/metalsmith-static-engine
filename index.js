@@ -21,7 +21,6 @@ const templateAssets = require('./metalsmith-template-assets');
 const htmlMinifier = require('metalsmith-html-minifier');
 const jsonContent = require('./metalsmith-json-external-content');
 const metalsmithRegisterHelpers = require('./metalsmith-register-helpers');
-const metalsmithRegisterHelpers = require('metalsmith-register-helpers');
 const ignore = require('metalsmith-ignore');
 
 require('handlebars-helpers')();
@@ -125,8 +124,7 @@ function metalsmithFactory(workDir, buildDir, options) {
     console.log('Using Handlebars Extensions at ' + handlebarHelpersPath);
   }
 
-  const GLOBAL_HELPERS_PATH = path.join(__dirname,'../content/sitebuilder-themes/global-helpers');
-
+  const GLOBAL_HELPERS_PATH = path.join(options.themeDir,'../global-helpers');
   const HELPERS_PATHS = [GLOBAL_HELPERS_PATH];
   if(handlebarHelpersPath) HELPERS_PATHS.push(handlebarHelpersPath);
 
