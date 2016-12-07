@@ -21,9 +21,7 @@ function plugin (options) {
         _handleDir(files,metalsmith,options.directory[index]);
       });
       done();
-    }).catch((err)=>{
-      throw err;
-    });
+    }).catch((err)=>done(err));
   }
 }
 // Nothing asynchronous here. Invoke done just after that.
